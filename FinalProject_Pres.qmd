@@ -43,7 +43,7 @@ The learning rates of the children are calculated by taking the average of their
 library(tidyverse)
 ```
 ```{r, echo=FALSE}
-df_processed <- read_delim("VSL_main_data.csv", delim = ";") |> 
+df_analysis <- read_delim("VSL_main_data.csv", delim = ";") |> 
   mutate(
     diff1 = D1 - I1,
     diff2 = D2 - I2,
@@ -59,13 +59,17 @@ df_processed <- read_delim("VSL_main_data.csv", delim = ";") |>
   mutate(
     block = as.numeric(str_extract(block_str, "\\d"))
   )
-subject_slopes <- df_processed |> 
-  group_by(ID, age) |> 
+
+subject_slopes <- df_analysis |> 
+  group_by(ID, age, sex) |> 
   summarise(
     learning_rate = coef(lm(rt_diff ~ block))[2],
     .groups = "drop"
   ) |> 
   filter(!is.na(learning_rate))
+
+head(subject_slopes)
+
 ggplot(subject_slopes, aes(x = age, y = learning_rate)) +
   geom_point(alpha = 0.6, color = "darkblue") +
   geom_smooth(method = "lm", color = "red", se = TRUE) +
@@ -94,27 +98,14 @@ ggplot(subject_slopes, aes(x = age, y = learning_rate)) +
 Learning rates are calculated same as before
 
 ```{r, echo=FALSE}
-subject_slopes <- df_processed |> 
-  group_by(ID, sex) |> 
-  summarise(
-    learning_rate = coef(lm(rt_diff ~ block))[2],
-    .groups = "drop"
-  ) |> 
-  filter(!is.na(learning_rate))
-ggplot(subject_slopes, aes(x = sex, y = learning_rate)) +
-  geom_point(alpha = 0.6, color = "darkblue") +
-  geom_smooth(method = "lm", color = "red", se = TRUE) +
-  labs(
-    title = "Learning Rate vs. Sex",
-    subtitle = "Rate at which children increase the gap between Unpredictable and Predictable RTs",
-    x = "Age (months)",
-    y = "Learning Rate (Slope of RT Difference)"
-  ) +
+ggplot(subject_slopes, aes(x = sex, y = learning_rate, fill = sex)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.15, alpha = 0.5) +
+  labs(title = "Learning Rate by Sex",
+       x = "Sex", 
+       y = "Learning Rate") +
   theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    axis.title = element_text(face = "bold")
-  )
+  scale_fill_manual(values = c("F" = "#E41A1C", "M" = "#377EB8"))
 ```
 
 ## Observations
