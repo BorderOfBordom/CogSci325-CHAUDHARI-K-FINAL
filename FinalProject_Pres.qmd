@@ -1,0 +1,128 @@
+---
+title: "Final Project"
+format: revealjs
+editor: visual
+author: "Karan Chaudhari"
+---
+## What is Visual Statistical Learning?
+### Definition
+
+-   Visual Statistical Learning (Visual SL) is the cognitive ability to implicitly extract statistical patterns and regularities from visual stimuli in our environment.
+
+### Why It Matters
+
+-   It underpins how we make sense of the world, allowing us to predict future events based on past sequences without conscious effort. It is a fundamental component of cognitive development.
+
+## Method/Data Source
+
+-   To examine Visual SL in young children using both online measures (reaction times) and offline measures (recognition tasks). 
+-   The study investigates whether this learning is purely implicit or involves active engagement. It does this in 2 experiments, of which we only look at the first one.
+-   The first experiment was a visual experiment, where they had kids press a button if they saw a red alien enter a spaceship.
+-   They weren't told that the aliens were actually in sets of 3. (Ex. 2 blue aliens then a red alien)
+
+## Method/Data Source
+
+-   The researchers were looking into how fast the children learned the patterns of the triplets, and they used the reaction times of the children for that purpose.
+-   Original paper analyzed overall Visual SL differences, but I want to examine how quickly the learning effect emerges with respect to the ages of the children.
+
+## Motivating question(s)
+
+-   Does the rate at which children reduce their reaction times to predictable stimuli, relative to unpredictable stimuli, change as a function of age/gender?
+
+## Hypothesis
+
+-   Age difference: Older children, due to superior attention control and processing speed, will exhibit a steeper (faster) reduction in the predictable-unpredictable RT difference across trials, reflecting more efficient, active engagement with the implicit task structure.
+
+-   Gender difference:  While I don't predict there being any differences between genders, I am curious about whether gender acts as a moderating factor in the rate of behavioral improvement.
+
+## Learning Rate vs. Age in children 3-9 (Experiemnt 1)
+
+The learning rates of the children are calculated by taking the average of their change in reaction time over the course of the first experiment.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+```{r, echo=FALSE}
+df_processed <- read_delim("VSL_main_data.csv", delim = ";") |> 
+  mutate(
+    diff1 = D1 - I1,
+    diff2 = D2 - I2,
+    diff3 = D3 - I3,
+    diff4 = D4 - I4
+  ) |> 
+  select(ID, age, starts_with("diff"), sex) |> 
+  pivot_longer(
+    cols = starts_with("diff"),
+    names_to = "block_str",
+    values_to = "rt_diff"
+  ) |> 
+  mutate(
+    block = as.numeric(str_extract(block_str, "\\d"))
+  )
+subject_slopes <- df_processed |> 
+  group_by(ID, age) |> 
+  summarise(
+    learning_rate = coef(lm(rt_diff ~ block))[2],
+    .groups = "drop"
+  ) |> 
+  filter(!is.na(learning_rate))
+ggplot(subject_slopes, aes(x = age, y = learning_rate)) +
+  geom_point(alpha = 0.6, color = "darkblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(
+    title = "Learning Rate vs. Age",
+    subtitle = "Rate at which children increase the gap between Unpredictable and Predictable RTs",
+    x = "Age (months)",
+    y = "Learning Rate (Slope of RT Difference)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+## Observations
+
+-   The learning rate does not significantly change as a function of age.
+
+-   This likely is mirrored over in the gender category as well.
+
+
+## Learning rate vs. Gender (Experment 1)
+
+Learning rates are calculated same as before
+
+```{r, echo=FALSE}
+subject_slopes <- df_processed |> 
+  group_by(ID, sex) |> 
+  summarise(
+    learning_rate = coef(lm(rt_diff ~ block))[2],
+    .groups = "drop"
+  ) |> 
+  filter(!is.na(learning_rate))
+ggplot(subject_slopes, aes(x = sex, y = learning_rate)) +
+  geom_point(alpha = 0.6, color = "darkblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(
+    title = "Learning Rate vs. Sex",
+    subtitle = "Rate at which children increase the gap between Unpredictable and Predictable RTs",
+    x = "Age (months)",
+    y = "Learning Rate (Slope of RT Difference)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+## Observations
+
+- As expected, gender made no difference in the average learning rate of the children. However, there is a difference between the extremes of the genders, with girls having smaller extremes than boys. 
+
+## Conclusion
+
+- Based on the statistical visualization of the data, the answer to the research question is no. The learning rate of children does not appear to change significantly as a function of age or sex.
+
+- In both graphs, the wide dispersion of blue dots suggests that "Learning Rate" is likely driven by individual differences rather than these specific demographic factors.

@@ -1,0 +1,113 @@
+---
+title: "Final Pres - Exploration"
+output: html_notebook
+author: "Karan Chaudhari"
+date: "`r Sys.Date()`"
+---
+
+```{r}
+library(tidyverse)
+df_raw <- read_delim("VSL_main_data.csv", delim = ";")
+```
+
+This section identifies the number of observations and verifies data integrity.
+```{r}
+# Examine structure and types
+glimpse(df_raw)
+
+# Identify missing values per variable
+df_raw |> 
+  summarise(across(c(age, sex, D1, I1, D4, I4), ~ sum(is.na(.)))) |> 
+  pivot_longer(everything(), names_to = "Variable", values_to = "Missing_Count")
+
+# Count total observations
+cat("Total number of children in dataset:", nrow(df_raw))
+```
+We calculate the "Learning Rate" by determining the slope of the RT difference (Unpredictable - Predictable) across the 4 blocks.
+```{r}
+# Reshape data to long format
+df_analysis <- df_raw |> 
+  mutate(
+    diff1 = D1 - I1,
+    diff2 = D2 - I2,
+    diff3 = D3 - I3,
+    diff4 = D4 - I4
+  ) |> 
+  select(ID, age, starts_with("diff"), sex) |> 
+  pivot_longer(
+    cols = starts_with("diff"),
+    names_to = "block_str",
+    values_to = "rt_diff"
+  ) |> 
+  mutate(
+    block = as.numeric(str_extract(block_str, "\\d"))
+  )
+
+# Create the slope variable for each participant
+subject_slopes <- df_analysis |> 
+  group_by(ID, age, sex) |> 
+  summarise(
+    learning_rate = coef(lm(rt_diff ~ block))[2],
+    .groups = "drop"
+  ) |> 
+  filter(!is.na(learning_rate))
+
+head(subject_slopes)
+```
+
+Summary of the variables used in the final communication graphs.
+```{r}
+subject_slopes |> 
+  group_by(sex) |> 
+  summarise(
+    n = n(),
+    mean_age = mean(age, na.rm = TRUE),
+    sd_age   = sd(age, na.rm = TRUE),
+    mean_lr  = mean(learning_rate, na.rm = TRUE),
+    sd_lr    = sd(learning_rate, na.rm = TRUE),
+    min_lr   = min(learning_rate, na.rm = TRUE),
+    max_lr   = max(learning_rate, na.rm = TRUE)
+  )
+```
+
+For the distribution of Learning Rates, we check for normality and potential outliers in the calculated slopes.
+```{r}
+ggplot(subject_slopes, aes(x = learning_rate)) +
+  geom_density(fill = "blue", alpha = 0.4) +
+  geom_vline(aes(xintercept = mean(learning_rate)), linetype = "dashed", color = "red") +
+  labs(title = "Distribution of Learning Rates", 
+       x = "Learning Rate (Slope of RT Difference)") +
+  theme_minimal()
+```
+Since there are no crazy outliers, we continue with the rest of the analysis.
+Age vs. Learning Rate: Exploring whether the rate of learning changes as children get older. (Graph to be used in final document)
+```{r}
+ggplot(subject_slopes, aes(x = age, y = learning_rate)) +
+  geom_point(alpha = 0.6, color = "darkblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(
+    title = "Learning Rate vs. Age",
+    subtitle = "Rate at which children increase the gap between Unpredictable and Predictable RTs",
+    x = "Age (months)",
+    y = "Learning Rate (Slope of RT Difference)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+Sex vs. Learning Rate: Comparing the distribution of learning rates between Male and Female participants.
+
+```{r}
+ggplot(subject_slopes, aes(x = sex, y = learning_rate, fill = sex)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.15, alpha = 0.5) +
+  labs(title = "Learning Rate by Sex",
+       x = "Sex", 
+       y = "Learning Rate") +
+  theme_minimal() +
+  scale_fill_manual(values = c("F" = "#E41A1C", "M" = "#377EB8"))
+```
+
